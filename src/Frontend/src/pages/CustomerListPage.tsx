@@ -6,6 +6,7 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  TextField,
   Typography,
   styled,
   tableCellClasses,
@@ -28,22 +29,59 @@ interface CustomerListQuery {
 
 export default function CustomerListPage() {
   const [list, setList] = useState<CustomerListQuery[]>([]);
+    const [emailFilter, setEmailFilter] = useState("");
+    const [nameFilter, setNameFilter] = useState("");
+
+    const [emailFilterToSend, setEmailFilterToSend] = useState("");
+    const [nameFilterToSend, setNameFilterToSend] = useState("");
 
   useEffect(() => {
-    fetch("/api/customers/list")
-      .then((response) => {
-        return response.json();
-      })
-      .then((data) => {
+    const fetchCustomers = async () => {
+
+        const params = new URLSearchParams();
+        if (nameFilterToSend) {
+            params.append("name", nameFilterToSend);
+        }
+        if (emailFilterToSend) {
+            params.append("email", emailFilterToSend);
+        }
+    
+        const url = `/api/customers/list?${params.toString()}`;
+
+        const response = await fetch(url);
+        const data = await response.json();
         setList(data as CustomerListQuery[]);
-      });
-  }, []);
+  }
+
+  fetchCustomers()
+}   , [nameFilterToSend, emailFilterToSend]);
+
+
+useEffect(() => {
+    const timer = setTimeout(() => {
+        setNameFilterToSend(nameFilter);
+        setEmailFilterToSend(emailFilter);
+    }, 1000);
+
+    return () => clearTimeout(timer); // Cleanup the timer on unmount or when dependencies change 
+  },[nameFilter, emailFilter]);
 
   return (
     <>
+    
+
       <Typography variant="h4" sx={{ textAlign: "center", mt: 4, mb: 4 }}>
-        Suppliers
+        Customers
       </Typography>
+    <div style={{ display: "flex", justifyContent: "center", gap: "10px", marginBottom: "20px" }}>
+        <TextField id="outlined-basic" label="Filter by Name" variant="outlined"
+        value={nameFilter}
+        onChange={(e)=> setNameFilter(e.target.value)}/>
+
+        <TextField id="outlined-basic" label="Filter by Email" variant="outlined"
+        value={emailFilter}
+        onChange={(e)=> setEmailFilter(e.target.value)}/>
+    </div>
 
       <TableContainer component={Paper}>
         <Table sx={{ minWidth: 650 }} aria-label="simple table">
