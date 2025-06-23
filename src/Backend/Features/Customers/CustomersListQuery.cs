@@ -1,7 +1,10 @@
 namespace Backend.Features.Customers;
 
-public class CustomersListQuery : IRequest<List<CustomersListQueryResponse>>
+public class CustomersListQuery : IRequest<CustomersListQueryResponseWithTotalCount>
 {
+    public int CurrentPageNumber { get; set; }
+    public int ItemsPerPage { get; set; }
+    
     public string? Name { get; set; }
     public string? Email { get; set; }
 }
@@ -17,28 +20,48 @@ public class CustomersListQueryResponse
     public CustomersListQueryResponseCategory? Category { get; set; }
 }
 
+
+
+
 public class CustomersListQueryResponseCategory
 {
     public string Code { get; set; } = "";
     public string Description { get; set; } = "";
 }
 
+public class CustomersListQueryResponseWithTotalCount
+{
+    public List<CustomersListQueryResponse> Customers { get; set; } = new();
+    public int TotalCount { get; set; }
+}
 
-internal class CustomersListQueryHandler(BackendContext context) : IRequestHandler<CustomersListQuery, List<CustomersListQueryResponse>>
+
+internal class CustomersListQueryHandler(BackendContext context) : IRequestHandler<CustomersListQuery, CustomersListQueryResponseWithTotalCount>
 {
     private readonly BackendContext context = context;
 
-    public async Task<List<CustomersListQueryResponse>> Handle(CustomersListQuery request, CancellationToken cancellationToken)
+    public async Task<CustomersListQueryResponseWithTotalCount> Handle(CustomersListQuery request, CancellationToken cancellationToken)
     {
+
+
+
         var query = context.Customers.AsQueryable();
         if (!string.IsNullOrEmpty(request.Name))
             query = query.Where(q => q.Name.ToLower().Contains(request.Name.ToLower()));
         if (!string.IsNullOrEmpty(request.Email))
             query = query.Where(q => q.Email.ToLower().Contains(request.Email.ToLower()));
 
-        var data = await query.OrderBy(q => q.Name).ThenBy(q => q.Id).ToListAsync(cancellationToken);
-        var result = new List<CustomersListQueryResponse>();
 
+        var total = await query.CountAsync(cancellationToken);
+
+        var data = await query.OrderBy(q => q.Name).ThenBy(q => q.Id)
+                        .Skip((request.CurrentPageNumber - 1) * request.ItemsPerPage)
+                        .Take(request.ItemsPerPage)
+                        .ToListAsync(cancellationToken);
+
+        var result = new CustomersListQueryResponseWithTotalCount();
+
+        var itemList = new List<CustomersListQueryResponse>();
         foreach (var item in data)
         {
             var resultItem = new CustomersListQueryResponse
@@ -60,8 +83,14 @@ internal class CustomersListQueryHandler(BackendContext context) : IRequestHandl
                 };
 
 
-            result.Add(resultItem);
+            itemList.Add(resultItem);
         }
+
+        result = new CustomersListQueryResponseWithTotalCount()
+        {
+            Customers = itemList,
+            TotalCount = total
+        };
 
         return result;
     }

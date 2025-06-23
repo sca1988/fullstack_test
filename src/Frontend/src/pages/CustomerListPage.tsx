@@ -5,6 +5,7 @@ import {
   TableCell,
   TableContainer,
   TableHead,
+  TablePagination,
   TableRow,
   TextField,
   Typography,
@@ -13,7 +14,7 @@ import {
 } from "@mui/material";
 import { useEffect, useState } from "react";
 
-interface CustomerListQuery {
+interface CustomerItem {
   id: number;
   name: string;
   address: string;
@@ -27,18 +28,38 @@ interface CustomerListQuery {
  
 }
 
+interface CustomerListQueryResult{
+  customers: CustomerItem[];
+  totalCount: number;
+}
+
 export default function CustomerListPage() {
-  const [list, setList] = useState<CustomerListQuery[]>([]);
+  const [list, setList] = useState<CustomerItem[]>([]);
+  const [totalItems, setTotalItems] = useState(0);
+
+  //#region Filters States
     const [emailFilter, setEmailFilter] = useState("");
     const [nameFilter, setNameFilter] = useState("");
-
     const [emailFilterToSend, setEmailFilterToSend] = useState("");
     const [nameFilterToSend, setNameFilterToSend] = useState("");
+  //#endregion Filters States
+
+  //#region Pagination States
+  const [currentPageNumber, setCurrentPageNumber] = useState(0);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+
+  //#endregion Pagination States
 
   useEffect(() => {
     const fetchCustomers = async () => {
 
         const params = new URLSearchParams();
+
+        //Pagination parameters
+        params.append("currentPageNumber", currentPageNumber.toString());
+        params.append("itemsPerPage", itemsPerPage.toString());
+
+        //Filters parameters
         if (nameFilterToSend) {
             params.append("name", nameFilterToSend);
         }
@@ -49,12 +70,14 @@ export default function CustomerListPage() {
         const url = `/api/customers/list?${params.toString()}`;
 
         const response = await fetch(url);
-        const data = await response.json();
-        setList(data as CustomerListQuery[]);
+        const data = await response.json() as CustomerListQueryResult;
+        const itemList = data.customers  as CustomerItem[];
+        setList([...itemList]);
+        setTotalItems(data.totalCount);
   }
 
   fetchCustomers()
-}   , [nameFilterToSend, emailFilterToSend]);
+}   , [currentPageNumber, itemsPerPage, nameFilterToSend, emailFilterToSend]);
 
 
 useEffect(() => {
@@ -97,7 +120,7 @@ useEffect(() => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {list.map((row) => (
+            {list?.map((row) => (
               <TableRow
                 key={row.id}
                 sx={{ "&:last-child td, &:last-child th": { border: 0 } }}
@@ -114,6 +137,17 @@ useEffect(() => {
           </TableBody>
         </Table>
       </TableContainer>
+      <TablePagination
+      component="div"
+      page={currentPageNumber}
+      onPageChange={(event, newPage) => setCurrentPageNumber(newPage)}
+      rowsPerPage={itemsPerPage}
+      onRowsPerPageChange={(event) => {
+        setCurrentPageNumber(0);
+        setItemsPerPage(parseInt(event.target.value, 10));
+    }}
+      count={totalItems} 
+     />
     </>
   );
 }
