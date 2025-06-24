@@ -13,6 +13,7 @@ import {
   tableCellClasses,
 } from "@mui/material";
 import { useEffect, useState } from "react";
+import ExportXmlBtn from "./ChildComponents/ExportXmlBtn";
 
 interface CustomerItem {
   id: number;
@@ -104,6 +105,8 @@ useEffect(() => {
         <TextField id="outlined-basic" label="Filter by Email" variant="outlined"
         value={emailFilter}
         onChange={(e)=> setEmailFilter(e.target.value)}/>
+
+        <ExportXmlBtn name={nameFilter} email={emailFilter} />
     </div>
 
       <TableContainer component={Paper}>
