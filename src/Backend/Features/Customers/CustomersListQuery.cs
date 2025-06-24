@@ -1,3 +1,5 @@
+using System.Xml.Serialization;
+
 namespace Backend.Features.Customers;
 
 public class CustomersListQuery : IRequest<CustomersListQueryResponseWithTotalCount>
@@ -8,6 +10,7 @@ public class CustomersListQuery : IRequest<CustomersListQueryResponseWithTotalCo
     public string? Name { get; set; }
     public string? Email { get; set; }
 }
+
 
 public class CustomersListQueryResponse
 {
@@ -44,8 +47,8 @@ internal class CustomersListQueryHandler(BackendContext context) : IRequestHandl
     {
 
 
-
-        var query = context.Customers.AsQueryable();
+        //Miglioramento che consente di evitare di effettuare n query sulla tabella CustomerCategory, per ciascun customer recuperato
+        var query = context.Customers.Include(c=> c.CustomerCategory).AsQueryable();
         if (!string.IsNullOrEmpty(request.Name))
             query = query.Where(q => q.Name.ToLower().Contains(request.Name.ToLower()));
         if (!string.IsNullOrEmpty(request.Email))
@@ -61,30 +64,20 @@ internal class CustomersListQueryHandler(BackendContext context) : IRequestHandl
 
         var result = new CustomersListQueryResponseWithTotalCount();
 
-        var itemList = new List<CustomersListQueryResponse>();
-        foreach (var item in data)
+        var itemList = data.Select(item => new CustomersListQueryResponse
         {
-            var resultItem = new CustomersListQueryResponse
-            {
-                Id = item.Id,
-                Name = item.Name,
-                Address = item.Address,
-                Email = item.Email,
-                Phone = item.Phone,
-                Iban = item.Iban
-            };
-
-            var category = await context.CustomerCategories.SingleOrDefaultAsync(q => q.Id == item.CustomerCategoryId, cancellationToken);
-            if (category is not null)
-                resultItem.Category = new CustomersListQueryResponseCategory
-                {
-                    Code = category.Code,
-                    Description = category.Description
-                };
-
-
-            itemList.Add(resultItem);
-        }
+            Id = item.Id,
+            Name = item.Name,
+            Address = item.Address,
+            Email = item.Email,
+            Phone = item.Phone,
+            Iban = item.Iban,
+            Category = item.CustomerCategory == null ? null : new CustomersListQueryResponseCategory
+            {
+                Code = item.CustomerCategory.Code,
+                Description = item.CustomerCategory.Description
+            }
+        }).ToList();
 
         result = new CustomersListQueryResponseWithTotalCount()
         {
