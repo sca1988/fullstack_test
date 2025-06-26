@@ -13,7 +13,8 @@ import {
   tableCellClasses,
 } from "@mui/material";
 import { useEffect, useState } from "react";
-import ExportXmlBtn from "./ChildComponents/ExportXmlBtn";
+import ExportXmlBtn from "../components/ExportXmlBtn";
+import { useFetchWithLoading } from "../hooks/useFetchWithLoading";
 
 interface CustomerItem {
   id: number;
@@ -48,6 +49,8 @@ export default function CustomerListPage() {
   //#region Pagination States
   const [currentPageNumber, setCurrentPageNumber] = useState(0);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+  const { fetchWithLoading } = useFetchWithLoading();
+
 
   //#endregion Pagination States
 
@@ -70,8 +73,7 @@ export default function CustomerListPage() {
     
         const url = `/api/customers/list?${params.toString()}`;
 
-        const response = await fetch(url);
-        const data = await response.json() as CustomerListQueryResult;
+        const data = await fetchWithLoading<CustomerListQueryResult>(url);
         const itemList = data.customers  as CustomerItem[];
         setList([...itemList]);
         setTotalItems(data.totalCount);

@@ -41,50 +41,53 @@ public class CustomersListQueryResponseWithTotalCount
 
 internal class CustomersListQueryHandler(BackendContext context) : IRequestHandler<CustomersListQuery, CustomersListQueryResponseWithTotalCount>
 {
+
+
+ 
     private readonly BackendContext context = context;
 
     public async Task<CustomersListQueryResponseWithTotalCount> Handle(CustomersListQuery request, CancellationToken cancellationToken)
     {
 
+            //Miglioramento che consente di evitare di effettuare n query sulla tabella CustomerCategory, per ciascun customer recuperato
+            var query = context.Customers.Include(c => c.CustomerCategory).AsQueryable();
+            if (!string.IsNullOrEmpty(request.Name))
+                query = query.Where(q => q.Name.ToLower().Contains(request.Name.ToLower()));
+            if (!string.IsNullOrEmpty(request.Email))
+                query = query.Where(q => q.Email.ToLower().Contains(request.Email.ToLower()));
 
-        //Miglioramento che consente di evitare di effettuare n query sulla tabella CustomerCategory, per ciascun customer recuperato
-        var query = context.Customers.Include(c=> c.CustomerCategory).AsQueryable();
-        if (!string.IsNullOrEmpty(request.Name))
-            query = query.Where(q => q.Name.ToLower().Contains(request.Name.ToLower()));
-        if (!string.IsNullOrEmpty(request.Email))
-            query = query.Where(q => q.Email.ToLower().Contains(request.Email.ToLower()));
 
+            var total = await query.CountAsync(cancellationToken);
 
-        var total = await query.CountAsync(cancellationToken);
+            var data = await query.OrderBy(q => q.Name).ThenBy(q => q.Id)
+                            .Skip((request.CurrentPageNumber - 1) * request.ItemsPerPage)
+                            .Take(request.ItemsPerPage)
+                            .ToListAsync(cancellationToken);
 
-        var data = await query.OrderBy(q => q.Name).ThenBy(q => q.Id)
-                        .Skip((request.CurrentPageNumber - 1) * request.ItemsPerPage)
-                        .Take(request.ItemsPerPage)
-                        .ToListAsync(cancellationToken);
+            var result = new CustomersListQueryResponseWithTotalCount();
 
-        var result = new CustomersListQueryResponseWithTotalCount();
+            var itemList = data.Select(item => new CustomersListQueryResponse
+            {
+                Id = item.Id,
+                Name = item.Name,
+                Address = item.Address,
+                Email = item.Email,
+                Phone = item.Phone,
+                Iban = item.Iban,
+                Category = item.CustomerCategory == null ? null : new CustomersListQueryResponseCategory
+                {
+                    Code = item.CustomerCategory.Code,
+                    Description = item.CustomerCategory.Description
+                }
+            }).ToList();
 
-        var itemList = data.Select(item => new CustomersListQueryResponse
-        {
-            Id = item.Id,
-            Name = item.Name,
-            Address = item.Address,
-            Email = item.Email,
-            Phone = item.Phone,
-            Iban = item.Iban,
-            Category = item.CustomerCategory == null ? null : new CustomersListQueryResponseCategory
-            {
-                Code = item.CustomerCategory.Code,
-                Description = item.CustomerCategory.Description
-            }
-        }).ToList();
+            result = new CustomersListQueryResponseWithTotalCount()
+            {
+                Customers = itemList,
+                TotalCount = total
+            };
 
-        result = new CustomersListQueryResponseWithTotalCount()
-        {
-            Customers = itemList,
-            TotalCount = total
-        };
-
-        return result;
+            return result;
+       
     }
 }
