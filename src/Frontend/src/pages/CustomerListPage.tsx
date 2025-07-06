@@ -87,7 +87,8 @@ useEffect(() => {
     const timer = setTimeout(() => {
         setNameFilterToSend(nameFilter);
         setEmailFilterToSend(emailFilter);
-    }, 1000);
+        setCurrentPageNumber(0); // Reset to the first page when filters change
+         }, 1000);
 
     return () => clearTimeout(timer); // Cleanup the timer on unmount or when dependencies change 
   },[nameFilter, emailFilter]);
