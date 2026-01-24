@@ -1,3 +1,4 @@
+using System.Threading.Channels;
 using Microsoft.AspNetCore.OpenApi;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -17,6 +18,22 @@ builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<Pr
 // Setup Database
 var connectionString = builder.Configuration.GetConnectionString("Backend") ?? throw new ArgumentNullException("Backend Connectionsting not set");
 builder.Services.AddDbContext<BackendContext>(x => x.UseSqlite(connectionString));
+
+
+
+
+// Bounded channel: drop oldest or wait when full
+var channel = Channel.CreateBounded<Customer>(new BoundedChannelOptions(capacity: 1000)
+{
+    SingleReader = false,
+    SingleWriter = false,
+    FullMode = BoundedChannelFullMode.DropOldest // or Wait DropOldest, DropNewest, DropWrite
+});
+
+builder.Services.AddSingleton(channel);
+builder.Services.AddSingleton(channel.Reader);
+builder.Services.AddSingleton(channel.Writer);
+
 
 // Build app
 var app = builder.Build();
