@@ -59,7 +59,7 @@ static class RouteRegistrationExtensions
             return Task.CompletedTask;
         });
 
-        app.MapGet("customers/realtime", (
+        apiGroup.MapGet("customers/realtime", (
             ChannelReader<Customer> channelReader,
             CancellationToken cancellationToken) =>
         {
@@ -69,14 +69,16 @@ static class RouteRegistrationExtensions
             return Results.ServerSentEvents(
                 channelReader.ReadAllAsync(cancellationToken),
                 eventType: "customers");
-        });
+        }).RequireCors("SseCors");
 
-        app.MapPost("customers/pushInChannel", (
+        
+
+        apiGroup.MapPost("customers/pushInChannel", async (
             ChannelWriter<Customer> channelWriter,
             CancellationToken cancellationToken) =>
         {
             var faker = new Faker("it");
-            channelWriter.TryWrite(new Customer
+            await channelWriter.WriteAsync(new Customer
             {
                 Name = faker.Company.CompanyName(),
                 Address = faker.Address.FullAddress(),

@@ -34,6 +34,19 @@ builder.Services.AddSingleton(channel);
 builder.Services.AddSingleton(channel.Reader);
 builder.Services.AddSingleton(channel.Writer);
 
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("SseCors", policy =>
+    {
+        policy
+            .WithOrigins("http://localhost:10000") // ⬅️ Adjust to your client app URL(s)
+            .AllowAnyHeader()
+            .AllowAnyMethod() // covers GET, POST, and preflight OPTIONS
+            // .AllowCredentials() // ⬅️ Only if you really use cookies/auth headers on SSE/POST
+            .SetPreflightMaxAge(TimeSpan.FromHours(1));
+    });
+});
+
 
 // Build app
 var app = builder.Build();
@@ -48,10 +61,10 @@ app.MapOpenApi(); // exposes /openapi/v1.json
 app.UseSwaggerUI(c =>
 {
     c.SwaggerEndpoint("/openapi/v1.json", "My API v1");
-    c.RoutePrefix = "docs"; // UI at /docs
+    c.RoutePrefix = "swagger";
 });
 
-
+app.UseCors("SseCors");
 
 // Register all the routes for the api
 app.UseApiRoutes();
